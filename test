@@ -1,1 +1,5 @@
-Print(hello world)
+Print("hello world")
+a=1 
+b=1 
+a+b
+print(a)
