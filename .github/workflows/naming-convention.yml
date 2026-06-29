@@ -1,0 +1,71 @@
+name: "Jira Naming Enforcer (Branch, PR, Commits)"
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  enforce-conventions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required to fetch all commits in the PR for validation
+
+      - name: 1. Validate Branch Name
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
+        run: |
+          echo "Checking Branch Name: $BRANCH_NAME"
+          
+          # Allows: PROJ-123/feat-description (or any uppercase Jira project key)
+          REGEX="^[A-Z]+-[0-9]+\/(feat|fix|refactor|chore|docs|test|perf|build|ci|revert)-.+$"
+          
+          if [[ ! "$BRANCH_NAME" =~ $REGEX ]]; then
+            echo "::error::Branch name '$BRANCH_NAME' is invalid."
+            echo "Expected format: <JIRA-ID>/<type>-<description>"
+            echo "Example: PROJ-1024/feat-payment-gateway"
+            exit 1
+          fi
+          echo "✅ Branch Name is valid!"
+
+      - name: 2. Validate PR Title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          echo "Checking PR Title: $PR_TITLE"
+          
+          # Allows: PROJ-123/Feat-Description OR [PROJ-123] Feat: Description
+          REGEX="^(\[?[A-Z]+-[0-9]+\]?)[ \/](Feat|Fix|Refactor|Chore|Docs|Test|Perf|Build|Ci|Revert)[:-].+$"
+          
+          if [[ ! "$PR_TITLE" =~ $REGEX ]]; then
+            echo "::error::PR Title '$PR_TITLE' is invalid."
+            echo "Expected format: <JIRA-ID>/<Type>-<Subject>"
+            echo "Example: PROJ-205/Feat-Implement JWT token rotation"
+            exit 1
+          fi
+          echo "✅ PR Title is valid!"
+
+      - name: 3. Validate All Commit Messages
+        run: |
+          echo "Checking all commits in this Pull Request..."
+          
+          # Get all commit messages in the PR (excluding merges to avoid false positives)
+          COMMITS=$(git log --no-merges --format=%s origin/${{ github.base_ref }}..origin/${{ github.head_ref }})
+          
+          # Allows: [PROJ-123] feat(scope): subject OR [PROJ-123] feat: subject
+          REGEX="^\[[A-Z]+-[0-9]+\] (feat|fix|refactor|chore|docs|test|perf|build|ci|revert)(\([a-z-]+\))?: .+$"
+          
+          # Iterate through each commit message line by line
+          while IFS= read -r commit; do
+            echo "Checking commit: $commit"
+            if [[ ! "$commit" =~ $REGEX ]]; then
+              echo "::error::Commit message '$commit' is invalid."
+              echo "Expected format: '[JIRA-ID] type(scope): subject'"
+              echo "Example: [PROJ-1024] feat(auth): implement token rotation"
+              exit 1
+            fi
+          done <<< "$COMMITS"
+          
+          echo "✅ All commit messages are valid!"
