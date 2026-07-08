@@ -1,0 +1,83 @@
+🚀 VS Code & GitHub Master ManualWelcome to our engineering workflow portal. This single-file documentation establishes uniform guidelines for branches, commits, PRs, and visual reviews directly within VS Code and GitHub.👥 Targeted Team RolesRoleBadgeKey ResponsibilityAuthorCode compilation, testing, creating/refining the Pull Request, and resolving comments.ReviewerReviewing diffs, verifying design criteria, and leaving concrete inline code suggestions.🗺️ Interactive Workflow OverviewClick on any step below to expand detailed instructions, terminal commands, and exact visual reference pins.🧭 Phase 1: Synchronization & AlignmentPrimary Actor: Goal: Synchronize your local repository with the remote master/main to ensure you have the absolute latest codebase baseline before spawning any new work.💻 Terminal Commands:git checkout main
+git fetch origin
+git pull origin main
+📍 Screenshot Reference Pins:Checkout Main: Switch your local workspace to the master branch using the Git selector in the VS Code bottom status bar.Sync Button: Click the circular sync icon in the VS Code status bar to pull and push changes.Primary Actor: Goal: Create a clean feature or bugfix branch off of main. Follow semantic naming rules: feature/JIRA-ID_short-description or bugfix/JIRA-ID_short-description.💻 Terminal Commands:git checkout -b feature/PROJ-123_setup-auth
+📍 Screenshot Reference Pins:Branch Indicator: Notice the bottom-left corner updates to show your new branch name.Publish Branch: A blue button appears in the Source Control panel to publish your local branch to the remote repository.Primary Actor: Goal: Publish your newly created branch to the remote GitHub repository. This establishes the tracking link between local and remote environments immediately.💻 Terminal Commands:git push -u origin feature/PROJ-123_setup-auth
+📍 Screenshot Reference Pins:Publish Branch Button: Push local branch upstream directly from the Source Control side-panel interface.Terminal Output: Notice upstream tracking branch successfully configured.Primary Actor: Goal: Transition your assigned Jira issue from 'To Do' to 'In Progress'. Verify your task requirements align perfectly with what you are about to build.📝 Guidelines:Keep your active JIRA-123 ID handy. 
+Every commit and PR should refer to this ID to enable automated company tracking.
+📍 Screenshot Reference Pins:Jira Board Card: Confirm your assignee state and issue identifier matches.In Progress column: Drag card to reflect current state to stakeholders.Primary Actor: Goal: Double-check that your global or workspace Git settings in VS Code match your corporate identity (email and name) to avoid build and authoring errors.💻 Terminal Commands:git config --get user.name
+git config --get user.email
+📍 Screenshot Reference Pins:Settings UI: Search for 'Git' inside VS Code preferences to verify auto-fetch settings.Terminal Query: Run configuration commands to confirm your corporate email is set.🛠️ Phase 2: Development & Local CommitPrimary Actor: Goal: Write clean, self-contained code. Use VS Code auto-save or save periodically. Make sure local compilation succeeds prior to staging.💻 Terminal Commands:# Run local compilers/tests
+npm run test
+npm run build
+📍 Screenshot Reference Pins:Dirty Files Indicator: Small circle on files tab or numbers on explorer showing unsaved modifications.Timeline View: Review local timeline explorer at the bottom of the File Explorer to trace unsaved history.Primary Actor: Goal: Open the VS Code Source Control View and click a modified file to inspect the split-diff side-by-side. Ensure no debug statements or temp files remain.💻 Terminal Commands:git diff
+📍 Screenshot Reference Pins:Split Diff Editor: Red highlights indicate deleted code, green highlights show additions.Source Control List: Double-click any file inside the source control side-panel to trigger this visual comparison.Primary Actor: Goal: Do not just run 'git add .'. Stage file changes selectively. You can stage specific code lines or ranges directly within the VS Code diff view.💻 Terminal Commands:git add src/components/Auth.js
+# Or interactive staging:
+git add -p
+📍 Screenshot Reference Pins:Plus (+) Icon: Click the small plus next to file names to transition them to 'Staged Changes'.Inline Staging: Right-click selected lines inside the editor and select 'Stage Selected Ranges'.Primary Actor: Goal: Draft a commit message using Conventional Commits rules: feat(auth): PROJ-123 added token storage. Keep the header line under 50 characters.📝 Sample Commit Template:feat(auth): PROJ-123 added secure token storage
+
+- Configured JWT tokens to write to secure local keychain
+- Handled empty token validation gracefully
+📍 Screenshot Reference Pins:Commit Text Box: Enter your structural text in the Source Control input area.Commit Button: Dropdown arrow lets you choose commit-and-push or simple local commit.Primary Actor: Goal: Finalize the staging state by executing your commit. Your local branch is now one commit ahead of the remote tracking branch.💻 Terminal Commands:git commit
+📍 Screenshot Reference Pins:Source Control Count: Staged items reset, and the badge on the VS Code sidebar clears.Sync Indicator: Bottom status bar updates with an 'up arrow' showing 1 commit ready to push.📤 Phase 3: Remote Push & PR LifecyclePrimary Actor: Goal: Upload your finalized commits from your local workstation to the tracking branch on the remote GitHub repository.💻 Terminal Commands:git push origin feature/PROJ-123_setup-auth
+📍 Screenshot Reference Pins:Status Bar Sync: Click the dynamic sync indicator arrow widget to run a secure git push.Push Action: Accessible via the Source Control top-right triple-dot menu options.Primary Actor: Goal: Visit the remote GitHub page or use VS Code's GitHub Pull Requests extension to trigger the creation of a Pull Request. Use 'Draft' mode if not fully completed.💻 Terminal Commands (using GitHub CLI):gh pr create --draft
+📍 Screenshot Reference Pins:GitHub Toast Banner: Click the yellow 'Compare & pull request' banner displayed on the repository landing page.Draft Toggle: Set the submission state to 'Draft' so automatic testing runs before reviewers are alerted.Primary Actor: Goal: Complete your organization's standard PR template detailing context, impact, and manual verification steps.📍 Screenshot Reference Pins:Markdown Editor: Check relevant boxes (e.g., - [x]) to signal requirement fulfillment.Description Block: Insert functional details and link Jira tickets with # or PROJ- notation.Primary Actor: Goal: Add designated senior engineers and domain experts to the 'Reviewers' list. Assign yourself as 'Assignee'.💻 Terminal Commands (using GitHub CLI):gh pr edit --add-reviewer "@senior-dev"
+📍 Screenshot Reference Pins:Reviewers Cog: Select appropriate colleagues from the right sidebar on the GitHub PR page.Labels & Milestones: Add metadata tags (e.g., 'needs-review', 'backend') for better team sorting.Primary Actor: Goal: Wait for continuous integration actions (testing, linting, security scans) to successfully complete. Fix any immediate red flags.💻 Terminal Commands (using GitHub CLI):gh pr checks
+📍 Screenshot Reference Pins:Checks Section: Scroll to the bottom of the PR page to watch live action status icons.Details Link: If a build fails, click the 'Details' link to read runner raw logs.🔍 Phase 4: Peer Review & RefinePrimary Actor: Goal: Open the pull request notification. Check out the changes inside VS Code locally or use GitHub's web review portal.💻 Terminal Commands (using GitHub CLI):gh pr checkout 123
+📍 Screenshot Reference Pins:Files Changed Tab: Click on this GitHub tab to review the aggregated source changes.PR Sidebar in VS Code: Use the official GitHub extension to view comments directly inside your code editor.Primary Actor: Goal: Provide precise constructive critique. Ask clarifying questions on specific architectural implementations or styling structures.📍 Screenshot Reference Pins:Hover Plus (+) Symbol: Hover over any changed line of code to create an inline review thread.Multi-line Selection: Drag your cursor along the line numbers to comment on multiple code blocks.Primary Actor: Goal: Instead of describing code edits, use the suggestions markdown block to write exact code patches that the author can accept instantly.📝 Markdown Suggestion Syntax:Create a blockquote format wrapping your code like this:```suggestion
+const storedToken = localStorage.getItem('auth_token') || '';
+
+> 📍 **Screenshot Reference Pins:**
+> 1. **Suggestion Widget:** Click the 'Insert Suggestion' button inside the review comment editor on GitHub.
+> 2. **Diff Preview:** GitHub renders a side-by-side diff comparison of the active comment vs. your proposal.
+
+---
+</details>
+
+<details>
+<summary><b>Step 19: Author - Address Feedback</b></summary>
+<br/>
+
+* **Primary Actor:** ![](https://img.shields.io/badge/Role-AUTHOR-007acc?style=flat-square)
+* **Goal:** Review the feedback, make necessary adjustments in your local workspace, and answer any design questions in the discussion thread.
+
+> 📍 **Screenshot Reference Pins:**
+> 1. **Resolve Conversation:** Click this button once a thread's concerns have been fully mitigated.
+> 2. **Reply Box:** Enter context or explain why a certain strategy was selected.
+
+---
+</details>
+
+<details>
+<summary><b>Step 20: Author - Apply Code Suggestions</b></summary>
+<br/>
+
+* **Primary Actor:** ![](https://img.shields.io/badge/Role-AUTHOR-007acc?style=flat-square)
+* **Goal:** While reviewing suggestions inside VS Code, hover over the proposal card and click the 'Apply Suggestion' option to automatically patch local files.
+
+> 📍 **Screenshot Reference Pins:**
+> 1. **Commit Suggestion Button:** Apply changes instantly from the GitHub UI if not checking out locally.
+> 2. **Apply Locally:** Use VS Code's GitHub PR panel to merge the suggested code block.
+
+---
+</details>
+
+<details>
+<summary><b>Step 21: Push Iterative Patches</b></summary>
+<br/>
+
+* **Primary Actor:** ![](https://img.shields.io/badge/Role-AUTHOR-007acc?style=flat-square)
+* **Goal:** Push your new code amendments back to the tracking branch. GitHub automatically updates the active Pull Request and reruns the CI pipelines.
+
+#### 💻 Terminal Commands:
+```bash
+git add .
+git commit -m "fix(auth): applied PR review suggestions"
+git push origin feature/PROJ-123_setup-auth
+📍 Screenshot Reference Pins:Commit History Tab: Confirm new patches appear at the top of the history timeline list on GitHub.Action Indicators: Observe automatic rebuild and test runner tasks triggered.🏁 Phase 5: Secure Merge & Workspace PruningPrimary Actor: Goal: Reviewers double check the final updates. Once satisfied, submit the final review selecting the 'Approve' toggle option.💻 Terminal Commands (using GitHub CLI):gh pr review --approve
+📍 Screenshot Reference Pins:Review Changes Button: Large green button on top right of the 'Files changed' view.Approve Option: Toggle selection to 'Approve' and click the submit button.Primary Actor:  / Goal: Perform a Squash and Merge to combine all your work commits into a single clean commit on the main branch. Delete your remote branch.💻 Terminal Commands (using GitHub CLI):gh pr merge --squash --delete-branch
+📍 Screenshot Reference Pins:Merge Button Dropdown: Click the arrow next to the Merge button and select 'Squash and merge'.Delete Branch: Click the purple 'Delete branch' action button that appears after merging is complete.Primary Actor: Goal: Reset your local workspace. Switch back to main, pull down the squashed merge, and safely delete your temporary branch to keep your workspace pristine.💻 Terminal Commands:git checkout main
+git fetch -p
+git pull origin main
+git branch -D feature/PROJ-123_setup-auth
+📍 Screenshot Reference Pins:Branch Indicator: Confirm workspace successfully returns back to 'main' branch on status bar.Synchronize Indicator: Ensure local repository has pulled all remote merge actions.
