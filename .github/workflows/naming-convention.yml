@@ -1,6 +1,12 @@
 name: "Jira Naming Enforcer (Branch, PR, Commits)"
 
 on:
+  push:
+    # Runs on every push to feature branches, but ignores production branches
+    branches-ignore:
+      - main
+      - master
+      - develop
   pull_request:
     types: [opened, edited, synchronize, reopened]
 
@@ -11,59 +17,75 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Required to fetch all commits in the PR for validation
+          fetch-depth: 0 # Required to fetch history so git log can safely scan commits
 
+      # ------------------------------------------------------------------
+      # 1. VALIDATE BRANCH NAME
+      # ------------------------------------------------------------------
       - name: 1. Validate Branch Name
         env:
           BRANCH_NAME: ${{ github.head_ref }}
         run: |
           echo "Checking Branch Name: $BRANCH_NAME"
           
-          # Allows: PROJ-123/feat-description (or any uppercase Jira project key)
-          REGEX="^[A-Z]+-[0-9]+\/(feat|fix|refactor|chore|docs|test|perf|build|ci|revert)-.+$"
+          # Matches format: PROJ-123/feat-login-page
+          REGEX="^[A-Z]+-[0-9]+\/(feat|fix|chore)-.+$"
           
           if [[ ! "$BRANCH_NAME" =~ $REGEX ]]; then
             echo "::error::Branch name '$BRANCH_NAME' is invalid."
-            echo "Expected format: <JIRA-ID>/<type>-<description>"
-            echo "Example: PROJ-1024/feat-payment-gateway"
+            echo "Expected format: <JIRA-ID>/<keyword>-<description>"
+            echo "Example: PROJ-123/feat-login-page"
             exit 1
           fi
           echo "✅ Branch Name is valid!"
 
+      # ------------------------------------------------------------------
+      # 2. VALIDATE PULL REQUEST TITLE
+      # ------------------------------------------------------------------
       - name: 2. Validate PR Title
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           echo "Checking PR Title: $PR_TITLE"
           
-          # Allows: PROJ-123/Feat-Description OR [PROJ-123] Feat: Description
-          REGEX="^(\[?[A-Z]+-[0-9]+\]?)[ \/](Feat|Fix|Refactor|Chore|Docs|Test|Perf|Build|Ci|Revert)[:-].+$"
+          # Matches format: PROJ-123-feat : Add login page
+          REGEX="^[A-Z]+-[0-9]+-(feat|fix|chore)[ ]+:[ ]+.+$"
           
           if [[ ! "$PR_TITLE" =~ $REGEX ]]; then
             echo "::error::PR Title '$PR_TITLE' is invalid."
-            echo "Expected format: <JIRA-ID>/<Type>-<Subject>"
-            echo "Example: PROJ-205/Feat-Implement JWT token rotation"
+            echo "Expected format: <JIRA-ID>-<keyword> : <description>"
+            echo "Example: PROJ-123-feat : Add login page"
             exit 1
           fi
           echo "✅ PR Title is valid!"
 
+      # ------------------------------------------------------------------
+      # 3. VALIDATE ALL COMMIT MESSAGES
+      # ------------------------------------------------------------------
       - name: 3. Validate All Commit Messages
         run: |
           echo "Checking all commits in this Pull Request..."
           
-          # Get all commit messages in the PR (excluding merges to avoid false positives)
-          COMMITS=$(git log --no-merges --format=%s origin/${{ github.base_ref }}..origin/${{ github.head_ref }})
+          # Precise commit SHAs prevent git context crashes
+          COMMITS=$(git log --no-merges --format=%s ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }})
           
-          # Allows: [PROJ-123] feat(scope): subject OR [PROJ-123] feat: subject
-          REGEX="^\[[A-Z]+-[0-9]+\] (feat|fix|refactor|chore|docs|test|perf|build|ci|revert)(\([a-z-]+\))?: .+$"
+          if [[ -z "$COMMITS" ]]; then
+            echo "✅ No new commits found to validate."
+            exit 0
+          fi
+          
+          # Matches format: PROJ-123-fix : login timeout loop
+          REGEX="^[A-Z]+-[0-9]+-(feat|fix|chore)[ ]+:[ ]+.+$"
           
           # Iterate through each commit message line by line
           while IFS= read -r commit; do
+            if [[ -z "$commit" ]]; then continue; fi
             echo "Checking commit: $commit"
+            
             if [[ ! "$commit" =~ $REGEX ]]; then
               echo "::error::Commit message '$commit' is invalid."
-              echo "Expected format: '[JIRA-ID] type(scope): subject'"
-              echo "Example: [PROJ-1024] feat(auth): implement token rotation"
+              echo "Expected format: '<JIRA-ID>-<keyword> : <description>'"
+              echo "Example: PROJ-123-fix : login timeout loop"
               exit 1
             fi
           done <<< "$COMMITS"
