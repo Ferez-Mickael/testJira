@@ -1,40 +1,32 @@
 name: "Jira Naming Enforcer (Branch, PR, Commits)"
 
 on:
-  create: # Triggers instantly when a new branch is created on the GitHub UI or via terminal
+  push:
+    # Runs on every push to feature branches, but ignores production branches
+    branches-ignore:
+      - main
+      - master
+      - develop
   pull_request:
     types: [opened, edited, synchronize, reopened]
 
 jobs:
   enforce-conventions:
-    # Only run on PR events, or branch creation events (safely ignores tag creations)
-    if: github.event_name == 'pull_request' || (github.event_name == 'create' && github.event.ref_type == 'branch')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # Required to fetch history so git log can safely scan commits
 
       # ------------------------------------------------------------------
-      # 1. VALIDATE BRANCH NAME (Runs on Creation & PRs)
+      # 1. VALIDATE BRANCH NAME
       # ------------------------------------------------------------------
       - name: 1. Validate Branch Name
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
         run: |
-          # Automatically detect branch name based on the event context
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            BRANCH_NAME="${{ github.head_ref }}"
-          else
-            BRANCH_NAME="${{ github.event.ref }}"
-          fi
-          
           echo "Checking Branch Name: $BRANCH_NAME"
-          
-          # Skip checking system default branches to avoid unnecessary self-failures
-          if [[ "$BRANCH_NAME" == "main" || "$BRANCH_NAME" == "master" || "$BRANCH_NAME" == "develop" ]]; then
-            echo "✅ Skipping validation rules for default/production branches."
-            exit 0
-          fi
           
           # Matches format: PROJ-123/feat-login-page
           REGEX="^[A-Z]+-[0-9]+\/(feat|fix|chore)-.+$"
@@ -48,10 +40,9 @@ jobs:
           echo "✅ Branch Name is valid!"
 
       # ------------------------------------------------------------------
-      # 2. VALIDATE PULL REQUEST TITLE (Only runs on PRs)
+      # 2. VALIDATE PULL REQUEST TITLE
       # ------------------------------------------------------------------
       - name: 2. Validate PR Title
-        if: github.event_name == 'pull_request'
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
@@ -69,14 +60,13 @@ jobs:
           echo "✅ PR Title is valid!"
 
       # ------------------------------------------------------------------
-      # 3. VALIDATE ALL COMMIT MESSAGES (Only runs on PRs)
+      # 3. VALIDATE ALL COMMIT MESSAGES
       # ------------------------------------------------------------------
       - name: 3. Validate All Commit Messages
-        if: github.event_name == 'pull_request'
         run: |
           echo "Checking all commits in this Pull Request..."
           
-          # Precise SHAs prevent standard Git context checkout failures
+          # Precise commit SHAs prevent git context crashes
           COMMITS=$(git log --no-merges --format=%s ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }})
           
           if [[ -z "$COMMITS" ]]; then
@@ -87,9 +77,11 @@ jobs:
           # Matches format: PROJ-123-fix : login timeout loop
           REGEX="^[A-Z]+-[0-9]+-(feat|fix|chore)[ ]+:[ ]+.+$"
           
+          # Iterate through each commit message line by line
           while IFS= read -r commit; do
             if [[ -z "$commit" ]]; then continue; fi
             echo "Checking commit: $commit"
+            
             if [[ ! "$commit" =~ $REGEX ]]; then
               echo "::error::Commit message '$commit' is invalid."
               echo "Expected format: '<JIRA-ID>-<keyword> : <description>'"
