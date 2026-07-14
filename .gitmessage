@@ -1,0 +1,17 @@
+PROJ-XXX-[keyword] Brief subject line
+
+## What is changing?
+[Explain the new functionality OR describe the problem and how you fixed it]
+
+## Ticket Link
+Resolves: PROJ-XXX
+
+# ------------------------------------------------------------------
+# COMMIT GUIDE:
+# - Ticket ID: Always include the relevant Ticket ID (e.g., PROJ-123)
+# - Keywords: Use one of these 3 basic keywords[cite: 1]:
+#     feat  -> New features or functionality[cite: 1]
+#     fix   -> Bug fixes, patches, and corrections[cite: 1]
+#     chore -> Routine maintenance, tooling, dependency updates[cite: 1]
+# - Example: PROJ-123-fix login timeout loop[cite: 1]
+# ------------------------------------------------------------------
