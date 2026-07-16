@@ -16,17 +16,18 @@ if [ -z "$JIRA_KEY" ]; then
     JIRA_KEY="PROJ-XXX"
 fi
 
-# 3. Extract just the very first line the developer typed to act as the Git Title
+# 3. Slice the text: Line 1 becomes the Title, Line 2+ becomes the Description
 GIT_TITLE=$(echo "$USER_MSG" | head -n 1)
+GIT_DESCRIPTION=$(echo "$USER_MSG" | tail -n +2)
 
 # 4. Construct the perfect Git commit structure
-# Line 1 is the clean commit name that shows up in SourceTree's history log
+# This line is what shows up in the SourceTree history list
 echo "$GIT_TITLE ($JIRA_KEY)" > "$COMMIT_MSG_FILE"
-echo "" >> "$COMMIT_MSG_FILE" # CRUCIAL: Blank line separates title from description
+echo "" >> "$COMMIT_MSG_FILE" # Separator line
 
-# The rest is the boss's markdown template placed safely in the description
+# This builds the clean markdown body for GitHub
 echo "## What is changing?" >> "$COMMIT_MSG_FILE"
-echo "$USER_MSG" >> "$COMMIT_MSG_FILE"
+echo "$GIT_DESCRIPTION" >> "$COMMIT_MSG_FILE"
 echo "" >> "$COMMIT_MSG_FILE"
 echo "## Ticket Link" >> "$COMMIT_MSG_FILE"
 echo "Resolves: $JIRA_KEY" >> "$COMMIT_MSG_FILE"
