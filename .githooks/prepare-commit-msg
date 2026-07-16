@@ -1,27 +1,31 @@
 #!/bin/sh
 
 COMMIT_MSG_FILE=$1
-
-# 1. Grab the normal text the developer just typed into SourceTree
 USER_MSG=$(cat "$COMMIT_MSG_FILE")
 
-# Skip formatting if it's a merge commit or if they already typed the template
-if echo "$USER_MSG" | grep -q "## What is changing?"; then
+# 1. Skip if it's a merge commit or if the template is already applied
+if echo "$USER_MSG" | grep -q "## What is changing?" || echo "$USER_MSG" | grep -q "Merge branch"; then
     exit 0
 fi
 
-# 2. Automatically extract the Jira key from the active branch name
-# (e.g., if branch is KAN-19-Fix-Test19, it extracts "KAN-19")
+# 2. Extract Jira key from the active branch name
 BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)
 JIRA_KEY=$(echo "$BRANCH_NAME" | grep -oE '[A-Z]+-[0-9]+' | head -n 1)
 
-# Fallback if no Jira key is found in the branch name
 if [ -z "$JIRA_KEY" ]; then
     JIRA_KEY="PROJ-XXX"
 fi
 
-# 3. Rewrite the message file into the boss's exact markdown template
-echo "## What is changing?" > "$COMMIT_MSG_FILE"
+# 3. Extract just the very first line the developer typed to act as the Git Title
+GIT_TITLE=$(echo "$USER_MSG" | head -n 1)
+
+# 4. Construct the perfect Git commit structure
+# Line 1 is the clean commit name that shows up in SourceTree's history log
+echo "$GIT_TITLE ($JIRA_KEY)" > "$COMMIT_MSG_FILE"
+echo "" >> "$COMMIT_MSG_FILE" # CRUCIAL: Blank line separates title from description
+
+# The rest is the boss's markdown template placed safely in the description
+echo "## What is changing?" >> "$COMMIT_MSG_FILE"
 echo "$USER_MSG" >> "$COMMIT_MSG_FILE"
 echo "" >> "$COMMIT_MSG_FILE"
 echo "## Ticket Link" >> "$COMMIT_MSG_FILE"
