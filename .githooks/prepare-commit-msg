@@ -4,30 +4,42 @@ COMMIT_MSG_FILE=$1
 USER_MSG=$(cat "$COMMIT_MSG_FILE")
 
 # 1. Skip if it's a merge commit or if the template is already applied
-if echo "$USER_MSG" | grep -q "## What is changing?" || echo "$USER_MSG" | grep -q "Merge branch"; then
+if echo "$USER_MSG" | grep -q "## What is changing?" || echo "$USER_MSG" | grep -q "^Merge branch"; then
     exit 0
 fi
 
-# 2. Extract Jira key from the active branch name
+# 2. Extract Jira Key and Keyword from the active branch name
+# Branch format expected: PROJ-123/feat-login-page
 BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)
-JIRA_KEY=$(echo "$BRANCH_NAME" | grep -oE '[A-Z]+-[0-9]+' | head -n 1)
 
+JIRA_KEY=$(echo "$BRANCH_NAME" | grep -oE '[A-Z0-9]+-[0-9]+' | head -n 1)
+KEYWORD=$(echo "$BRANCH_NAME" | grep -oE '(feat|fix|chore)' | head -n 1)
+
+# Fallbacks if branch name doesn't follow standard
 if [ -z "$JIRA_KEY" ]; then
-    JIRA_KEY="PROJ-XXX"
+    JIRA_KEY="PROJ-000"
 fi
 
-# 3. Slice the text: Line 1 becomes the Title, Line 2+ becomes the Description
+if [ -z "$KEYWORD" ]; then
+    KEYWORD="feat"
+fi
+
+# 3. Slice text: Line 1 becomes the Title, Line 2+ becomes the Description
 GIT_TITLE=$(echo "$USER_MSG" | head -n 1)
 GIT_DESCRIPTION=$(echo "$USER_MSG" | tail -n +2)
 
-# 4. Construct the perfect Git commit structure
-# This line is what shows up in the SourceTree history list
-echo "$GIT_TITLE ($JIRA_KEY)" > "$COMMIT_MSG_FILE"
-echo "" >> "$COMMIT_MSG_FILE" # Separator line
+# 4. Construct valid commit structure matching CI rules
+# Produces Line 1 format: PROJ-123-feat Add login page
+echo "$JIRA_KEY-$KEYWORD $GIT_TITLE" > "$COMMIT_MSG_FILE"
+echo "" >> "$COMMIT_MSG_FILE"
 
-# This builds the clean markdown body for GitHub
+# Markdown description template
 echo "## What is changing?" >> "$COMMIT_MSG_FILE"
-echo "$GIT_DESCRIPTION" >> "$COMMIT_MSG_FILE"
+if [ -n "$GIT_DESCRIPTION" ]; then
+    echo "$GIT_DESCRIPTION" >> "$COMMIT_MSG_FILE"
+else
+    echo "[Describe your change here]" >> "$COMMIT_MSG_FILE"
+fi
 echo "" >> "$COMMIT_MSG_FILE"
 echo "## Ticket Link" >> "$COMMIT_MSG_FILE"
 echo "Resolves: $JIRA_KEY" >> "$COMMIT_MSG_FILE"
