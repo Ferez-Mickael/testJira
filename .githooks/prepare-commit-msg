@@ -41,12 +41,22 @@ echo "" >> "$COMMIT_MSG_FILE"
 # 5. Build Description Template
 echo "What is changing?" >> "$COMMIT_MSG_FILE"
 
-if [ -n "$GIT_DESCRIPTION" ]; then
+# Check if description has content (ignoring empty spaces/newlines)
+if echo "$GIT_DESCRIPTION" | grep -q '[^[:space:]]'; then
     echo "$GIT_DESCRIPTION" | while IFS= read -r line; do
         if [ -z "$line" ]; then continue; fi
+        
+        # We escape the hashtag (\#) so bash doesn't treat it as a comment!
         case "$line" in
-            -*|#*) echo "$line" >> "$COMMIT_MSG_FILE" ;;
-            *)     echo "- $line" >> "$COMMIT_MSG_FILE" ;;
+            -*) 
+                echo "$line" >> "$COMMIT_MSG_FILE" 
+                ;;
+            \#*) 
+                echo "$line" >> "$COMMIT_MSG_FILE" 
+                ;;
+            *)     
+                echo "- $line" >> "$COMMIT_MSG_FILE" 
+                ;;
         esac
     done
 else
