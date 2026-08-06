@@ -97,19 +97,19 @@ jobs:
             
             # 2. Validate 'What is changing?' section
             if [[ ! "$FULL_MSG" =~ "What is changing?" ]]; then
-              echo "::error::Commit $SHORT_SHA body is missing 'What is changing?' section."
+              echo "::error::Commit $SHORT_SHA ('$SUBJECT') body is missing 'What is changing?' section."
               FAILED=1
             fi
 
             # 3. Validate Bullet Points starting with '-'
             if [[ ! "$FULL_MSG" =~ -[[:space:]]+.+ ]]; then
-              echo "::error::Commit $SHORT_SHA body must include bullet points starting with '- '"
+              echo "::error::Commit $SHORT_SHA ('$SUBJECT') body must include bullet points starting with '- '"
               echo "Example: - Added a disabled state during submission"
               FAILED=1
             fi
 
             if [[ $FAILED -eq 0 ]]; then
-              echo "✅ Commit $SHORT_SHA passed all validations!"
+              echo "✅ Commit $SHORT_SHA ('$SUBJECT') passed all validations!"
             fi
           done
 
