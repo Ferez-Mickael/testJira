@@ -1,33 +1,79 @@
 #!/bin/sh
 
 COMMIT_MSG_FILE=$1
-USER_MSG=$(cat "$COMMIT_MSG_FILE")
+COMMIT_SOURCE=$2
 
-# 1. Skip if it's a merge commit or if the template is already applied
-if echo "$USER_MSG" | grep -q "## What is changing?" || echo "$USER_MSG" | grep -q "Merge branch"; then
+# 1. Skip if it's a merge, amend, or if the template is already applied
+if [ "$COMMIT_SOURCE" = "merge" ] || [ "$COMMIT_SOURCE" = "commit" ]; then
+    exit 0
+fi
+if grep -q "What is changing?" "$COMMIT_MSG_FILE"; then
     exit 0
 fi
 
-# 2. Extract Jira key from the active branch name
+# 2. Extract Jira Key and Keyword from branch (e.g., PROJ-123/feat-addLoginPage)
 BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)
-JIRA_KEY=$(echo "$BRANCH_NAME" | grep -oE '[A-Z]+-[0-9]+' | head -n 1)
 
-if [ -z "$JIRA_KEY" ]; then
-    JIRA_KEY="PROJ-XXX"
+JIRA_KEY=$(echo "$BRANCH_NAME" | grep -oE '[A-Z0-9]+-[0-9]+' | head -n 1)
+KEYWORD=$(echo "$BRANCH_NAME" | grep -oE '(feat|fix|chore)' | head -n 1)
+
+if [ -z "$JIRA_KEY" ]; then JIRA_KEY="PROJ-000"; fi
+if [ -z "$KEYWORD" ]; then KEYWORD="feat"; fi
+
+# ====================================================================
+# CASE A: Standard Git Commit (Opens your editor)
+# ====================================================================
+if [ -z "$COMMIT_SOURCE" ] || [ "$COMMIT_SOURCE" = "template" ]; then
+    # Save the default Git comments ("# Please enter the commit message...")
+    ORIGINAL_CONTENT=$(cat "$COMMIT_MSG_FILE")
+    
+    # Build the fresh template for you to type into!
+    echo "$JIRA_KEY/$KEYWORD: " > "$COMMIT_MSG_FILE"
+    echo "" >> "$COMMIT_MSG_FILE"
+    echo "What is changing?" >> "$COMMIT_MSG_FILE"
+    echo "- " >> "$COMMIT_MSG_FILE"
+    echo "# Please start each separate functionality or modification with a '- '" >> "$COMMIT_MSG_FILE"
+    echo "" >> "$COMMIT_MSG_FILE"
+    
+    # Append the original git comments at the very bottom
+    echo "$ORIGINAL_CONTENT" >> "$COMMIT_MSG_FILE"
+    exit 0
 fi
 
-# 3. Slice the text: Line 1 becomes the Title, Line 2+ becomes the Description
-GIT_TITLE=$(echo "$USER_MSG" | head -n 1)
-GIT_DESCRIPTION=$(echo "$USER_MSG" | tail -n +2)
+# ====================================================================
+# CASE B: Inline Git Commit (You used: git commit -m "title" -m "desc")
+# ====================================================================
+if [ "$COMMIT_SOURCE" = "message" ]; then
+    USER_MSG=$(cat "$COMMIT_MSG_FILE")
+    GIT_TITLE=$(echo "$USER_MSG" | head -n 1)
+    GIT_DESCRIPTION=$(echo "$USER_MSG" | tail -n +2)
 
-# 4. Construct the perfect Git commit structure
-# This line is what shows up in the SourceTree history list
-echo "$GIT_TITLE ($JIRA_KEY)" > "$COMMIT_MSG_FILE"
-echo "" >> "$COMMIT_MSG_FILE" # Separator line
+    # Force the first character of the title to lowercase
+    if [ -n "$GIT_TITLE" ]; then
+        FIRST_CHAR=$(echo "$GIT_TITLE" | cut -c1 | tr '[:upper:]' '[:lower:]')
+        REST_CHAR=$(echo "$GIT_TITLE" | cut -c2-)
+        LOWER_TITLE="${FIRST_CHAR}${REST_CHAR}"
+    else
+        LOWER_TITLE="add change description"
+    fi
 
-# This builds the clean markdown body for GitHub
-echo "## What is changing?" >> "$COMMIT_MSG_FILE"
-echo "$GIT_DESCRIPTION" >> "$COMMIT_MSG_FILE"
-echo "" >> "$COMMIT_MSG_FILE"
-echo "## Ticket Link" >> "$COMMIT_MSG_FILE"
-echo "Resolves: $JIRA_KEY" >> "$COMMIT_MSG_FILE"
+    # Write formatted Title
+    echo "$JIRA_KEY/$KEYWORD: $LOWER_TITLE" > "$COMMIT_MSG_FILE"
+    echo "" >> "$COMMIT_MSG_FILE"
+    
+    # Write formatted Description
+    echo "What is changing?" >> "$COMMIT_MSG_FILE"
+    if echo "$GIT_DESCRIPTION" | grep -q '[^[:space:]]'; then
+        echo "$GIT_DESCRIPTION" | while IFS= read -r line; do
+            if [ -z "$line" ]; then continue; fi
+            case "$line" in
+                -*)  echo "$line" >> "$COMMIT_MSG_FILE" ;;
+                \#*) echo "$line" >> "$COMMIT_MSG_FILE" ;;
+                *)   echo "- $line" >> "$COMMIT_MSG_FILE" ;;
+            esac
+        done
+    else
+        echo "- " >> "$COMMIT_MSG_FILE"
+    fi
+    exit 0
+fi

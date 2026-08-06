@@ -2,7 +2,6 @@ name: "Jira Naming Enforcer (Branch, PR, Commits)"
 
 on:
   push:
-    # Runs on every push to feature branches, but ignores production branches
     branches-ignore:
       - main
       - master
@@ -17,77 +16,106 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Required to fetch history so git log can safely scan commits
+          fetch-depth: 0
 
       # ------------------------------------------------------------------
       # 1. VALIDATE BRANCH NAME
+      # Format: PROJ-123/feat-addLoginPage
       # ------------------------------------------------------------------
       - name: 1. Validate Branch Name
         env:
-          BRANCH_NAME: ${{ github.head_ref }}
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
         run: |
           echo "Checking Branch Name: $BRANCH_NAME"
           
-          # Matches format: PROJ-123/feat-login-page
-          REGEX="^[A-Z]+-[0-9]+\/(feat|fix|chore)-.+$"
+          REGEX="^[A-Z0-9]+-[0-9]+\/(feat|fix|chore)-.+$"
           
           if [[ ! "$BRANCH_NAME" =~ $REGEX ]]; then
             echo "::error::Branch name '$BRANCH_NAME' is invalid."
-            echo "Expected format: <JIRA-ID>/<keyword>-<description>"
-            echo "Example: PROJ-123/feat-login-page"
+            echo "Expected format: <ISSUE-ID>/<keyword>-<description>"
+            echo "Example: PROJ-123/feat-addLoginPage"
             exit 1
           fi
           echo "✅ Branch Name is valid!"
 
       # ------------------------------------------------------------------
       # 2. VALIDATE PULL REQUEST TITLE
+      # Format: PROJ-123/feat: add login page
       # ------------------------------------------------------------------
       - name: 2. Validate PR Title
+        if: github.event_name == 'pull_request'
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           echo "Checking PR Title: $PR_TITLE"
           
-          # Matches format: PROJ-123-feat : Add login page
-          REGEX="^[A-Z]+-[0-9]+-(feat|fix|chore)[ ]+:[ ]+.+$"
+          REGEX="^[A-Z0-9]+-[0-9]+\/(feat|fix|chore): [a-z].+$"
           
           if [[ ! "$PR_TITLE" =~ $REGEX ]]; then
             echo "::error::PR Title '$PR_TITLE' is invalid."
-            echo "Expected format: <JIRA-ID>-<keyword> : <description>"
-            echo "Example: PROJ-123-feat : Add login page"
+            echo "Expected format: <ISSUE-ID>/<keyword>: <lowercase description>"
+            echo "Example: PROJ-123/feat: add login page"
             exit 1
           fi
           echo "✅ PR Title is valid!"
 
       # ------------------------------------------------------------------
-      # 3. VALIDATE ALL COMMIT MESSAGES
+      # 3. VALIDATE FULL COMMIT MESSAGES (SUBJECT + BODY TEMPLATE)
       # ------------------------------------------------------------------
       - name: 3. Validate All Commit Messages
+        if: github.event_name == 'pull_request'
         run: |
-          echo "Checking all commits in this Pull Request..."
+          echo "Checking all commit messages in this Pull Request..."
           
-          # Precise commit SHAs prevent git context crashes
-          COMMITS=$(git log --no-merges --format=%s ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }})
+          # Get list of commit SHAs in this PR
+          SHAS=$(git log --no-merges --format=%H ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }})
           
-          if [[ -z "$COMMITS" ]]; then
+          if [[ -z "$SHAS" ]]; then
             echo "✅ No new commits found to validate."
             exit 0
           fi
-          
-          # Matches format: PROJ-123-fix : login timeout loop
-          REGEX="^[A-Z]+-[0-9]+-(feat|fix|chore)[ ]+:[ ]+.+$"
-          
-          # Iterate through each commit message line by line
-          while IFS= read -r commit; do
-            if [[ -z "$commit" ]]; then continue; fi
-            echo "Checking commit: $commit"
+
+          SUBJECT_REGEX="^[A-Z0-9]+-[0-9]+\/(feat|fix|chore): [a-z].+$"
+          FAILED=0
+
+          for SHA in $SHAS; do
+            SHORT_SHA=$(echo "$SHA" | cut -c1-7)
+            echo "----------------------------------------"
+            echo "Checking commit $SHORT_SHA..."
             
-            if [[ ! "$commit" =~ $REGEX ]]; then
-              echo "::error::Commit message '$commit' is invalid."
-              echo "Expected format: '<JIRA-ID>-<keyword> : <description>'"
-              echo "Example: PROJ-123-fix : login timeout loop"
-              exit 1
+            # Extract full commit message (Subject + Body)
+            FULL_MSG=$(git log -1 --format=%B "$SHA")
+            SUBJECT=$(echo "$FULL_MSG" | head -n 1)
+            
+            # 1. Validate Commit Subject Line
+            if [[ ! "$SUBJECT" =~ $SUBJECT_REGEX ]]; then
+              echo "::error::Commit $SHORT_SHA subject '$SUBJECT' is invalid."
+              echo "Expected format: '<ISSUE-ID>/<keyword>: <lowercase description>'"
+              echo "Example: PROJ-123/fix: add login timeout loop"
+              FAILED=1
             fi
-          done <<< "$COMMITS"
-          
-          echo "✅ All commit messages are valid!"
+            
+            # 2. Validate 'What is changing?' section
+            if [[ ! "$FULL_MSG" =~ "What is changing?" ]]; then
+              echo "::error::Commit $SHORT_SHA ('$SUBJECT') body is missing 'What is changing?' section."
+              FAILED=1
+            fi
+
+            # 3. Validate Bullet Points starting with '-'
+            if [[ ! "$FULL_MSG" =~ -[[:space:]]+.+ ]]; then
+              echo "::error::Commit $SHORT_SHA ('$SUBJECT') body must include bullet points starting with '- '"
+              echo "Example: - Added a disabled state during submission"
+              FAILED=1
+            fi
+
+            if [[ $FAILED -eq 0 ]]; then
+              echo "✅ Commit $SHORT_SHA ('$SUBJECT') passed all validations!"
+            fi
+          done
+
+          if [[ $FAILED -eq 1 ]]; then
+            echo "::error::One or more commit messages failed validation."
+            exit 1
+          fi
+
+          echo "✅ All commit messages and bodies are valid!"
