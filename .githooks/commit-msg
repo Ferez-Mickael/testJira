@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+# The path to the commit message file is passed as the first argument
+COMMIT_MSG_FILE=$1
+
+# Read the full commit message and the subject (first line)
+FULL_MSG=$(cat "$COMMIT_MSG_FILE")
+SUBJECT=$(head -n 1 "$COMMIT_MSG_FILE")
+
+# Flag to track failures
+FAILED=0
+
+echo "Checking commit message formatting..."
+
+# 1. Validate Commit Subject Line[cite: 2]
+SUBJECT_REGEX="^[A-Z0-9]+-[0-9]+\/(feat|fix|chore): [a-z].+$"
+if [[ ! "$SUBJECT" =~ $SUBJECT_REGEX ]]; then
+  echo "❌ ERROR: Commit subject line is invalid."
+  echo "   Expected format: '<ISSUE-ID>/<keyword>: <lowercase description>'"[cite: 2]
+  echo "   Example: PROJ-123/fix: add login timeout loop"[cite: 2]
+  FAILED=1
+fi
+
+# 2. Validate 'What is changing?' section[cite: 2]
+if [[ ! "$FULL_MSG" =~ "What is changing?" ]]; then
+  echo "❌ ERROR: Commit body is missing 'What is changing?' section."[cite: 2]
+  FAILED=1
+fi
+
+# 3. Validate Bullet Points starting with '-'[cite: 2]
+if [[ ! "$FULL_MSG" =~ -[[:space:]]+.+ ]]; then
+  echo "❌ ERROR: Commit body must include bullet points starting with '- '"[cite: 2]
+  echo "   Example: - Added a disabled state during submission"[cite: 2]
+  FAILED=1
+fi
+
+# Block the commit if any validation failed
+if [[ $FAILED -eq 1 ]]; then
+  echo "---------------------------------------------------"
+  echo "🚫 Commit rejected! Please fix the message and try again."
+  exit 1
+fi
+
+echo "✅ Commit message passed all validations!"
+exit 0
