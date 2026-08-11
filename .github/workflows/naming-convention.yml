@@ -19,14 +19,14 @@ jobs:
       - name: "🛠️ Step 1: Validate Branch Name"
         run: |
           BRANCH_NAME="${{ github.head_ref }}"
-          # Requires: feat-description
-          BRANCH_REGEX="^(feat|fix|chore)-.+"
+          # Requires: PROJ-123/feat-description
+          BRANCH_REGEX="^[A-Z0-9]+-[0-9]+/(feat|fix|chore)-.+"
           
           echo "Checking branch name: $BRANCH_NAME"
           if [[ ! "$BRANCH_NAME" =~ $BRANCH_REGEX ]]; then
             echo "❌ ERROR: The Branch Name '$BRANCH_NAME' is invalid."
-            echo "Format: [TYPE]-[description]"
-            echo "Example: feat-addLoginPage"
+            echo "Format: [JIRA-ID]/[TYPE]-[description]"
+            echo "Example: PROJ-123/feat-addLoginPage"
             exit 1
           fi
           echo "✅ Branch naming convention passed!"
@@ -38,8 +38,8 @@ jobs:
           BRANCH_NAME="${{ github.head_ref }}"
           PR_NUMBER="${{ github.event.pull_request.number }}"
           
-          # Changes feat-addLoginPage to feat: addLoginPage
-          PR_TITLE=$(echo "$BRANCH_NAME" | sed -E 's/^(feat|fix|chore)-/\1: /')
+          # Changes PROJ-123/feat-addLoginPage to PROJ-123/feat: addLoginPage
+          PR_TITLE=$(echo "$BRANCH_NAME" | sed -E 's/(\/(feat|fix|chore))-/\1: /')
           
           echo "Overwriting GitHub PR title to: $PR_TITLE"
           gh pr edit "$PR_NUMBER" --title "$PR_TITLE"
@@ -57,12 +57,12 @@ jobs:
             SUBJECT=$(git log -1 --format=%s $HASH)
             BODY=$(git log -1 --format=%b $HASH)
             
-            # 1. Check the Subject Line (feat: description)
-            SUBJECT_REGEX="^(feat|fix|chore): .+"
+            # 1. Check the Subject Line (PROJ-123/feat: description)
+            SUBJECT_REGEX="^[A-Z0-9]+-[0-9]+/(feat|fix|chore): .+"
             if [[ ! "$SUBJECT" =~ $SUBJECT_REGEX ]]; then
               echo "❌ COMMIT FAILED: $SHORT_HASH"
               echo "   Title:  $SUBJECT"
-              echo "   Reason: Invalid Subject Line. Must match '(feat|fix|chore): [description]'"
+              echo "   Reason: Invalid Subject Line. Must match '[JIRA-ID]/[TYPE]: [description]'"
               echo "-------------------------------------------------------------------------"
               HAS_ERRORS=1
               continue
