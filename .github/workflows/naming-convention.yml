@@ -7,13 +7,7 @@ on:
 jobs:
   enforce-conventions:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
     
-    # ⚠️ CRITICAL: The Action needs this exact permission to successfully edit the PR Title
     permissions:
       pull-requests: write
       contents: read
@@ -22,29 +16,23 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          # ⚠️ CRITICAL: Required to fetch all commits in the PR for Step 3
           fetch-depth: 0 
 
       - name: 🛠️ Step 1: Auto-Fix PR Title (Match Branch Name)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Get the actual branch name (e.g., PROJ-123/feat)
           BRANCH_NAME="${{ github.head_ref }}"
           PR_NUMBER="${{ github.event.pull_request.number }}"
           
           echo "Branch name is: $BRANCH_NAME"
           echo "Overwriting GitHub's default PR title to match the branch name..."
           
-          # Use GitHub CLI to instantly rename the PR
           gh pr edit "$PR_NUMBER" --title "$BRANCH_NAME"
 
       - name: ✅ Step 2: Validate the Naming Convention
         run: |
-          # We check the branch name here, because we just forced the PR title to be exactly the same!
           TARGET_NAME="${{ github.head_ref }}"
-          
-          # Your required naming convention regex
           REGEX="^[A-Z0-9]+-[0-9]+/(feat|fix|chore)"
           
           echo "Checking name: $TARGET_NAME"
@@ -60,17 +48,12 @@ jobs:
 
       - name: 📝 Step 3: Validate All Commit Messages
         run: |
-          # Reusing your regex for commit validation
           REGEX="^[A-Z0-9]+-[0-9]+/(feat|fix|chore)"
-          
-          # Gather all commits in this specific Pull Request
           COMMITS=$(git log --format=%s origin/${{ github.base_ref }}..origin/${{ github.head_ref }})
           
           echo "Checking commit messages..."
           
-          # Loop through each commit message and validate it
           while IFS= read -r COMMIT_MSG; do
-            # Skip completely empty lines
             if [ -z "$COMMIT_MSG" ]; then
               continue
             fi
