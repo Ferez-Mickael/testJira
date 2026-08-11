@@ -7,6 +7,11 @@ on:
 jobs:
   enforce-conventions:
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
     
     # ⚠️ CRITICAL: The Action needs this exact permission to successfully edit the PR Title
     permissions:
