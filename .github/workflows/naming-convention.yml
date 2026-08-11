@@ -19,13 +19,14 @@ jobs:
       - name: "🛠️ Step 1: Validate Branch Name"
         run: |
           BRANCH_NAME="${{ github.head_ref }}"
-          # Requires: PROJ-123/feat-description
-          BRANCH_REGEX="^[A-Z0-9]+-[0-9]+/(feat|fix|chore)-.+"
+          # Requires: feat-description
+          BRANCH_REGEX="^(feat|fix|chore)-.+"
           
           echo "Checking branch name: $BRANCH_NAME"
           if [[ ! "$BRANCH_NAME" =~ $BRANCH_REGEX ]]; then
             echo "❌ ERROR: The Branch Name '$BRANCH_NAME' is invalid."
-            echo "Format: [TICKET-ID]/[TYPE]-[description]"
+            echo "Format: [TYPE]-[description]"
+            echo "Example: feat-addLoginPage"
             exit 1
           fi
           echo "✅ Branch naming convention passed!"
@@ -37,15 +38,14 @@ jobs:
           BRANCH_NAME="${{ github.head_ref }}"
           PR_NUMBER="${{ github.event.pull_request.number }}"
           
-          # Changes PROJ-123/feat-addLoginPage to PROJ-123/feat: addLoginPage
-          PR_TITLE=$(echo "$BRANCH_NAME" | sed -E 's/(\/(feat|fix|chore))-/\1: /')
+          # Changes feat-addLoginPage to feat: addLoginPage
+          PR_TITLE=$(echo "$BRANCH_NAME" | sed -E 's/^(feat|fix|chore)-/\1: /')
           
           echo "Overwriting GitHub PR title to: $PR_TITLE"
           gh pr edit "$PR_NUMBER" --title "$PR_TITLE"
 
       - name: "📝 Step 3: Validate Commits (Subject & Description Template)"
         run: |
-          # Get all commit hashes for this PR
           COMMITS=$(git log --format=%H origin/${{ github.base_ref }}..origin/${{ github.head_ref }})
           HAS_ERRORS=0
           
@@ -53,17 +53,16 @@ jobs:
           echo "========================================================================="
           
           for HASH in $COMMITS; do
-            # Get the short 7-character hash for clean error logging
             SHORT_HASH=$(git rev-parse --short $HASH)
             SUBJECT=$(git log -1 --format=%s $HASH)
             BODY=$(git log -1 --format=%b $HASH)
             
-            # 1. Check the Subject Line (PROJ-123/fix: description)
-            SUBJECT_REGEX="^[A-Z0-9]+-[0-9]+/(feat|fix|chore): .+"
+            # 1. Check the Subject Line (feat: description)
+            SUBJECT_REGEX="^(feat|fix|chore): .+"
             if [[ ! "$SUBJECT" =~ $SUBJECT_REGEX ]]; then
               echo "❌ COMMIT FAILED: $SHORT_HASH"
               echo "   Title:  $SUBJECT"
-              echo "   Reason: Invalid Subject Line. Must match '[TICKET-ID]/[TYPE]: [description]'"
+              echo "   Reason: Invalid Subject Line. Must match '(feat|fix|chore): [description]'"
               echo "-------------------------------------------------------------------------"
               HAS_ERRORS=1
               continue
@@ -74,16 +73,6 @@ jobs:
               echo "❌ COMMIT FAILED: $SHORT_HASH"
               echo "   Title:  $SUBJECT"
               echo "   Reason: Missing the 'What is changing?' heading in the description body."
-              echo "-------------------------------------------------------------------------"
-              HAS_ERRORS=1
-              continue
-            fi
-            
-            # 3. Check the Body for "Ticket Link"
-            if ! echo "$BODY" | grep -iq "Ticket Link"; then
-              echo "❌ COMMIT FAILED: $SHORT_HASH"
-              echo "   Title:  $SUBJECT"
-              echo "   Reason: Missing the 'Ticket Link' heading in the description body."
               echo "-------------------------------------------------------------------------"
               HAS_ERRORS=1
               continue
