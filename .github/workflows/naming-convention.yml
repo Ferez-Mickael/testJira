@@ -7,16 +7,14 @@ on:
 jobs:
   enforce-conventions:
     runs-on: ubuntu-latest
-    
     permissions:
       pull-requests: write
       contents: read
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 
+          fetch-depth: 0
 
       - name: 🛠️ Step 1: Auto-Fix PR Title (Match Branch Name)
         env:
