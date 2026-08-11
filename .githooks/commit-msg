@@ -12,25 +12,25 @@ FAILED=0
 
 echo "Checking commit message formatting..."
 
-# 1. Validate Commit Subject Line[cite: 2]
-SUBJECT_REGEX="^[A-Z0-9]+-[0-9]+\/(feat|fix|chore): [a-z].+$"
+# 1. Validate Commit Subject Line (Updated for Version 1.2)
+SUBJECT_REGEX="^[A-Z0-9]+-[0-9]+-(feat|fix|chore): [a-z].+$"
 if [[ ! "$SUBJECT" =~ $SUBJECT_REGEX ]]; then
   echo "❌ ERROR: Commit subject line is invalid."
-  echo "   Expected format: '<ISSUE-ID>/<keyword>: <lowercase description>'"[cite: 2]
-  echo "   Example: PROJ-123/fix: add login timeout loop"[cite: 2]
+  echo "   Expected format: '<JIRA-ID>-<keyword>: <lowercase description>'"
+  echo "   Example: PROJ-123-feat: add login timeout loop"
   FAILED=1
 fi
 
-# 2. Validate 'What is changing?' section[cite: 2]
+# 2. Validate 'What is changing?' section
 if [[ ! "$FULL_MSG" =~ "What is changing?" ]]; then
-  echo "❌ ERROR: Commit body is missing 'What is changing?' section."[cite: 2]
+  echo "❌ ERROR: Commit body is missing 'What is changing?' section."
   FAILED=1
 fi
 
-# 3. Validate Bullet Points starting with '-'[cite: 2]
+# 3. Validate Bullet Points starting with '-'
 if [[ ! "$FULL_MSG" =~ -[[:space:]]+.+ ]]; then
-  echo "❌ ERROR: Commit body must include bullet points starting with '- '"[cite: 2]
-  echo "   Example: - Added a disabled state during submission"[cite: 2]
+  echo "❌ ERROR: Commit body must include bullet points starting with '- '"
+  echo "   Example: - Added a disabled state during submission"
   FAILED=1
 fi
 
