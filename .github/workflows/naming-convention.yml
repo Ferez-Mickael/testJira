@@ -16,6 +16,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # ⚠️ CRITICAL: Required to fetch all commits in the PR for Step 3
+          fetch-depth: 0 
 
       - name: 🛠️ Step 1: Auto-Fix PR Title (Match Branch Name)
         env:
@@ -49,3 +52,32 @@ jobs:
           fi
           
           echo "✅ Naming convention passed!"
+
+      - name: 📝 Step 3: Validate All Commit Messages
+        run: |
+          # Reusing your regex for commit validation
+          REGEX="^[A-Z0-9]+-[0-9]+/(feat|fix|chore)"
+          
+          # Gather all commits in this specific Pull Request
+          COMMITS=$(git log --format=%s origin/${{ github.base_ref }}..origin/${{ github.head_ref }})
+          
+          echo "Checking commit messages..."
+          
+          # Loop through each commit message and validate it
+          while IFS= read -r COMMIT_MSG; do
+            # Skip completely empty lines
+            if [ -z "$COMMIT_MSG" ]; then
+              continue
+            fi
+            
+            echo "Evaluating: $COMMIT_MSG"
+            
+            if [[ ! "$COMMIT_MSG" =~ $REGEX ]]; then
+              echo "❌ ERROR: Commit message '$COMMIT_MSG' is invalid."
+              echo "It must follow the format: [TICKET-ID]/[TYPE]"
+              echo "Example: PROJ-123/feat"
+              exit 1
+            fi
+          done <<< "$COMMITS"
+          
+          echo "✅ All commit messages passed!"
