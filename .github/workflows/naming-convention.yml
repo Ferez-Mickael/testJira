@@ -16,54 +16,89 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: "🛠️ Step 1: Auto-Fix PR Title (Match Branch Name)"
+      - name: "🛠️ Step 1: Validate Branch Name"
+        run: |
+          BRANCH_NAME="${{ github.head_ref }}"
+          # Requires: PROJ-123/feat-description
+          BRANCH_REGEX="^[A-Z0-9]+-[0-9]+/(feat|fix|chore)-.+"
+          
+          echo "Checking branch name: $BRANCH_NAME"
+          if [[ ! "$BRANCH_NAME" =~ $BRANCH_REGEX ]]; then
+            echo "❌ ERROR: The Branch Name '$BRANCH_NAME' is invalid."
+            echo "Format: [TICKET-ID]/[TYPE]-[description]"
+            exit 1
+          fi
+          echo "✅ Branch naming convention passed!"
+
+      - name: "🛠️ Step 2: Auto-Fix PR Title"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           BRANCH_NAME="${{ github.head_ref }}"
           PR_NUMBER="${{ github.event.pull_request.number }}"
           
-          echo "Branch name is: $BRANCH_NAME"
-          echo "Overwriting GitHub's default PR title to match the branch name..."
+          # Changes PROJ-123/feat-addLoginPage to PROJ-123/feat: addLoginPage
+          PR_TITLE=$(echo "$BRANCH_NAME" | sed -E 's/(\/(feat|fix|chore))-/\1: /')
           
-          gh pr edit "$PR_NUMBER" --title "$BRANCH_NAME"
+          echo "Overwriting GitHub PR title to: $PR_TITLE"
+          gh pr edit "$PR_NUMBER" --title "$PR_TITLE"
 
-      - name: "✅ Step 2: Validate the Naming Convention"
+      - name: "📝 Step 3: Validate Commits (Subject & Description Template)"
         run: |
-          TARGET_NAME="${{ github.head_ref }}"
-          REGEX="^[A-Z0-9]+-[0-9]+/(feat|fix|chore)"
+          # Get all commit hashes for this PR
+          COMMITS=$(git log --format=%H origin/${{ github.base_ref }}..origin/${{ github.head_ref }})
+          HAS_ERRORS=0
           
-          echo "Checking name: $TARGET_NAME"
+          echo "Checking all commits for Subject formatting and Description templates..."
+          echo "========================================================================="
           
-          if [[ ! "$TARGET_NAME" =~ $REGEX ]]; then
-            echo "❌ ERROR: The Branch/PR Name '$TARGET_NAME' is invalid."
-            echo "It must follow the format: [TICKET-ID]/[TYPE]"
-            echo "Example: PROJ-123/feat"
-            exit 1
-          fi
-          
-          echo "✅ Naming convention passed!"
-
-      - name: "📝 Step 3: Validate All Commit Messages"
-        run: |
-          REGEX="^[A-Z0-9]+-[0-9]+/(feat|fix|chore)"
-          COMMITS=$(git log --format=%s origin/${{ github.base_ref }}..origin/${{ github.head_ref }})
-          
-          echo "Checking commit messages..."
-          
-          while IFS= read -r COMMIT_MSG; do
-            if [ -z "$COMMIT_MSG" ]; then
+          for HASH in $COMMITS; do
+            # Get the short 7-character hash for clean error logging
+            SHORT_HASH=$(git rev-parse --short $HASH)
+            SUBJECT=$(git log -1 --format=%s $HASH)
+            BODY=$(git log -1 --format=%b $HASH)
+            
+            # 1. Check the Subject Line (PROJ-123/fix: description)
+            SUBJECT_REGEX="^[A-Z0-9]+-[0-9]+/(feat|fix|chore): .+"
+            if [[ ! "$SUBJECT" =~ $SUBJECT_REGEX ]]; then
+              echo "❌ COMMIT FAILED: $SHORT_HASH"
+              echo "   Title:  $SUBJECT"
+              echo "   Reason: Invalid Subject Line. Must match '[TICKET-ID]/[TYPE]: [description]'"
+              echo "-------------------------------------------------------------------------"
+              HAS_ERRORS=1
               continue
             fi
             
-            echo "Evaluating: $COMMIT_MSG"
-            
-            if [[ ! "$COMMIT_MSG" =~ $REGEX ]]; then
-              echo "❌ ERROR: Commit message '$COMMIT_MSG' is invalid."
-              echo "It must follow the format: [TICKET-ID]/[TYPE]"
-              echo "Example: PROJ-123/feat"
-              exit 1
+            # 2. Check the Body for "What is changing?"
+            if ! echo "$BODY" | grep -iq "What is changing"; then
+              echo "❌ COMMIT FAILED: $SHORT_HASH"
+              echo "   Title:  $SUBJECT"
+              echo "   Reason: Missing the 'What is changing?' heading in the description body."
+              echo "-------------------------------------------------------------------------"
+              HAS_ERRORS=1
+              continue
             fi
-          done <<< "$COMMITS"
+            
+            # 3. Check the Body for "Ticket Link"
+            if ! echo "$BODY" | grep -iq "Ticket Link"; then
+              echo "❌ COMMIT FAILED: $SHORT_HASH"
+              echo "   Title:  $SUBJECT"
+              echo "   Reason: Missing the 'Ticket Link' heading in the description body."
+              echo "-------------------------------------------------------------------------"
+              HAS_ERRORS=1
+              continue
+            fi
+            
+            # If it passes all checks:
+            echo "✅ PASSED: $SHORT_HASH - '$SUBJECT'"
+          done
           
-          echo "✅ All commit messages passed!"
+          echo "========================================================================="
+          
+          if [ "$HAS_ERRORS" -eq 1 ]; then
+            echo "❌ ERROR: One or more commits failed the naming or description convention."
+            echo "Please review the failed commits above, amend them, and force push."
+            exit 1
+          fi
+          
+          echo "✅ All commit subjects and descriptions passed!"
