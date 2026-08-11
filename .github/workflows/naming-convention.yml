@@ -16,7 +16,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: 🛠️ Step 1: Auto-Fix PR Title (Match Branch Name)
+        - name: 🛠️ Step 1: Auto-Fix PR Title (Match Branch Name)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -28,7 +28,7 @@ jobs:
           
           gh pr edit "$PR_NUMBER" --title "$BRANCH_NAME"
 
-      - name: ✅ Step 2: Validate the Naming Convention
+        - name: ✅ Step 2: Validate the Naming Convention
         run: |
           TARGET_NAME="${{ github.head_ref }}"
           REGEX="^[A-Z0-9]+-[0-9]+/(feat|fix|chore)"
