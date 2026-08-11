@@ -77,6 +77,16 @@ jobs:
               HAS_ERRORS=1
               continue
             fi
+
+            # 3. Check for at least one bullet point starting with '-'
+            if ! echo "$BODY" | grep -qE "^[[:space:]]*-"; then
+              echo "❌ COMMIT FAILED: $SHORT_HASH"
+              echo "   Title:  $SUBJECT"
+              echo "   Reason: Missing bullet points. You must use a '-' to list your changes after 'What is changing?'"
+              echo "-------------------------------------------------------------------------"
+              HAS_ERRORS=1
+              continue
+            fi
             
             # If it passes all checks:
             echo "✅ PASSED: $SHORT_HASH - '$SUBJECT'"
