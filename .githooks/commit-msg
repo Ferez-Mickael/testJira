@@ -18,6 +18,7 @@ if [[ ! "$SUBJECT" =~ $SUBJECT_REGEX ]]; then
   echo "❌ ERROR: Commit subject line is invalid."
   echo "   Expected format: '<JIRA-ID>-<keyword>: <lowercase description>'"
   echo "   Example: PROJ-123-feat: add login timeout loop"
+  echo "DEBUG: My title is ->$SUBJECT<-"
   FAILED=1
 fi
 
