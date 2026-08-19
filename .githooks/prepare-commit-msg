@@ -11,14 +11,11 @@ if grep -q "What is changing?" "$COMMIT_MSG_FILE"; then
     exit 0
 fi
 
-# 2. Extract Jira Key and Keyword from branch (e.g., PROJ-123/feat-addLoginPage)
+# 2. Extract Jira Key and Keyword from branch
 BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)
 
 JIRA_KEY=$(echo "$BRANCH_NAME" | grep -oE '[A-Z0-9]+-[0-9]+' | head -n 1)
 KEYWORD=$(echo "$BRANCH_NAME" | grep -oE '(feat|fix|chore)' | head -n 1)
-
-if [ -z "$JIRA_KEY" ]; then JIRA_KEY="PROJ-000"; fi
-if [ -z "$KEYWORD" ]; then KEYWORD="feat"; fi
 
 # ====================================================================
 # CASE A: Standard Git Commit (Opens your editor)
@@ -27,8 +24,8 @@ if [ -z "$COMMIT_SOURCE" ] || [ "$COMMIT_SOURCE" = "template" ]; then
     # Save the default Git comments ("# Please enter the commit message...")
     ORIGINAL_CONTENT=$(cat "$COMMIT_MSG_FILE")
     
-    # Build the fresh template for you to type into!
-    echo "$JIRA_KEY/$KEYWORD: " > "$COMMIT_MSG_FILE"
+    # Build the fresh template for you to type into! (Updated to Version 1.2 hyphen)
+    echo "$JIRA_KEY-$KEYWORD: " > "$COMMIT_MSG_FILE"
     echo "" >> "$COMMIT_MSG_FILE"
     echo "What is changing?" >> "$COMMIT_MSG_FILE"
     echo "- " >> "$COMMIT_MSG_FILE"
@@ -57,8 +54,8 @@ if [ "$COMMIT_SOURCE" = "message" ]; then
         LOWER_TITLE="add change description"
     fi
 
-    # Write formatted Title
-    echo "$JIRA_KEY/$KEYWORD: $LOWER_TITLE" > "$COMMIT_MSG_FILE"
+    # Write formatted Title (Updated to Version 1.2 hyphen)
+    echo "$JIRA_KEY-$KEYWORD: $LOWER_TITLE" > "$COMMIT_MSG_FILE"
     echo "" >> "$COMMIT_MSG_FILE"
     
     # Write formatted Description
