@@ -3,9 +3,9 @@
 # The path to the commit message file is passed as the first argument
 COMMIT_MSG_FILE=$1
 
-# Read the full commit message and the subject (first line)
-FULL_MSG=$(cat "$COMMIT_MSG_FILE")
-SUBJECT=$(head -n 1 "$COMMIT_MSG_FILE")
+# Read the full commit and subject, stripping any hidden Windows carriage returns (\r)
+FULL_MSG=$(cat "$COMMIT_MSG_FILE" | tr -d '\r')
+SUBJECT=$(head -n 1 "$COMMIT_MSG_FILE" | tr -d '\r')
 
 # Flag to track failures
 FAILED=0
@@ -18,7 +18,6 @@ if [[ ! "$SUBJECT" =~ $SUBJECT_REGEX ]]; then
   echo "❌ ERROR: Commit subject line is invalid."
   echo "   Expected format: '<JIRA-ID>-<keyword>: <lowercase description>'"
   echo "   Example: PROJ-123-feat: add login timeout loop"
-  echo "DEBUG: My title is ->$SUBJECT<-"
   FAILED=1
 fi
 
