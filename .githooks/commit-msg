@@ -29,7 +29,7 @@ if [[ ! "$FULL_MSG" =~ "What is changing?" ]]; then
 fi
 
 # 3. Validate Bullet Points starting with '-'
-if [[ ! "$FULL_MSG" =~ -[[:space:]]+.+ ]]; then
+if [[ ! "$FULL_MSG" =~ -[[:blank:]]+[^[:space:]] ]]; then
   echo "❌ ERROR: Commit body must include bullet points starting with '- '"
   echo "   Example: - Added a disabled state during submission"
   FAILED=1
